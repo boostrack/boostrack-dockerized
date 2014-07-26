@@ -1,14 +1,14 @@
 #!/bin/sh
 
-TAG="boostrack-spring-xd-singlenode"
+NAME="boostrack-spring-xd-singlenode"
 
-IMAGE_ID=$(docker ps -a | grep $TAG | cut -f1 -d' ')
-[ -z "$IMAGE_ID" ] || docker stop $IMAGE_ID | xargs docker rm | echo "Removed $IMAGE_ID"
+IMAGE_ID=$(docker ps -a | grep $NAME | cut -f1 -d' ')
+[ -z "$IMAGE_ID" ] || docker stop $IMAGE_ID | xargs docker rm | echo "Container: [$NAME] removed!! IMAGE_ID: $IMAGE_ID"
 
 # Ports
 # 5555 - Single Node Zookeeper
 # 9393 - String XD Single Node Server
-docker run --name $TAG -d -p 5555:5555 -p 9393:9393 boostrack-spring-xd /spring-xd-1.0.0.M7/xd/bin/xd-singlenode
+docker run --name $NAME -d -p 5555:5555 -p 9393:9393 -t boostrack-spring-xd /spring-xd-1.0.0.M7/xd/bin/xd-singlenode
 
 # IP=`echo $(ifconfig eth0 | awk -F: '/inet addr:/ {print $2}' | awk '{ print $1 }')`
 # URL="http://$IP:9393"
