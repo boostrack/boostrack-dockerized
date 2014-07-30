@@ -1,6 +1,4 @@
-FROM bootrack/devian:java8-runtime
-
-FROM boostrack-java8
+FROM boostrack/debian:java8-runtime
 
 RUN apt-get install -y unzip
 
