@@ -1,54 +1,43 @@
-FROM boostrack-debian-oracle-jdk8
+FROM boostrack/debian:wheezy
 
-RUN apt-get update
-RUN apt-get -y install curl mercurial
-RUN apt-get -y install make gcc bison
-RUN apt-get -y install emacs23-nox
-RUN apt-get -y install git-core
+# Let's install go (from source).
+RUN apt-get update -q
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -qy build-essential curl git
+RUN curl -s https://storage.googleapis.com/golang/go1.3.src.tar.gz | tar -v -C /usr/local -xz
+RUN cd /usr/local/go/src && ./make.bash --no-clean 2>&1
+ENV PATH /usr/local/go/bin:$PATH
 
-RUN adduser gopher
+# Let's install etcdctl (from source).
+ADD ./etcdctl/ /opt/etcdctl
+RUN cd /opt/etcdctl && ./build
+RUN cp /opt/etcdctl/bin/ /usr/local/bin/
 
-ENV GOROOT /home/gopher/go
-ENV GOBIN /home/gopher/go/bin
+# Let's install confd (from source).
+ADD ./confd/ /opt/confd
+RUN cd /opt/confd && ./build
+RUN cp /opt/confd/bin/ /usr/local/bin/
 
-WORKDIR /home/gopher
-RUN curl --remote-name http://bradfitz-public.s3-website-us-east-1.amazonaws.com/go.tar.gz
-RUN tar -zxvf go.tar.gz
-RUN rm go.tar.gz
-RUN mkdir -p $GOBIN
+RUN mkdir -p /etc/confd/conf.d
+ADD ./boostrack-nginx.toml/ /etc/confd/conf.d/
 
-ENV GOVERS f613443bb13a
-RUN cd $GOROOT && hg pull https://code.google.com/p/go
-RUN cd $GOROOT && hg update -C $GOVERS
-RUN echo $GOVERS > $GOROOT/VERSION
+RUN mkdir -p /etc/confd/templates
+ADD ./boostrack-nginx.tmpl/ /etc/confd/templates/
 
-RUN chown -R gopher.gopher $GOROOT
-RUN apt-get -y install sudo
-RUN echo "gopher ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+RUN \
+  apt-get install -y nginx-full && \
+  echo "\ndaemon off;" >> /etc/nginx/nginx.conf && \
+  chown -R www-data:www-data /var/lib/nginx
 
-USER gopher
-ENV PATH /home/gopher/bin:/home/gopher/src/camlistore.org/bin:/home/gopher/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-ENV HOME /home/gopher
+# Define mountable directories.
+VOLUME ["/data", "/etc/nginx/sites-enabled", "/var/log/nginx"]
 
-RUN cd $GOROOT/src && ./make.bash
+# Define working directory.
+WORKDIR /etc/nginx
 
-ENV CAMVERS 8ac8437e91cbce921cb7245d44f5191c1916b170
-ENV GOPATH /home/gopher
-RUN mkdir /home/gopher/src /home/gopher/bin
-RUN cd /home/gopher/src && git clone https://github.com/bradfitz/camlistore.git camlistore.org
-RUN cd /home/gopher/src/camlistore.org && git reset --hard $CAMVERS
-RUN cd /home/gopher/src/camlistore.org && make
+# Define default command.
+CMD ["nginx"]
 
-ENV USER gopher
-RUN camput init --newkey
-
-RUN sudo apt-get -y install fuse
-
-RUN (echo "#!/bin/sh"; echo "exec camlistored 2>/dev/null") > /home/gopher/bin/d
-RUN chmod +x /home/gopher/bin/d
-RUN sudo usermod -a -G fuse gopher
-
-RUN go get code.google.com/p/go.tools/cmd/godoc
-
-ENTRYPOINT /bin/bash
+# Expose ports.
+EXPOSE 80
+EXPOSE 443
 

@@ -2,7 +2,7 @@
 
 set -e
 
-git submodule update --init
+#git submodule update --init
 
 mvn clean install -DskipTests
 
