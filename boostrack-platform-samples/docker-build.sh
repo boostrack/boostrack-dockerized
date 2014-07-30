@@ -1,6 +1,10 @@
 #!/bin/bash
 
-#mvn clean package -DskipTests
+set -e
+
+git submodule update --init
+
+mvn clean install -DskipTests
 
 docker build -t boostrack/debian:configserver ./configserver/
 docker build -t boostrack/debian:microservice-customers ./customers-stores/rest-microservices-customers/
